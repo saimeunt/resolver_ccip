@@ -8,7 +8,7 @@ use starknet::testing;
 use starknet::contract_address::ContractAddressZeroable;
 use starknet::contract_address_const;
 use starknet::testing::set_contract_address;
-use super::utils;
+use super::super::utils;
 
 use openzeppelin::token::erc20::{
     erc20::ERC20, interface::{IERC20Camel, IERC20CamelDispatcher, IERC20CamelDispatcherTrait}
