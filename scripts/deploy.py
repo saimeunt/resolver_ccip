@@ -2,6 +2,7 @@
 import logging
 from asyncio import run
 
+from starknet_py.cairo.felt import encode_shortstring
 from utils.constants import COMPILED_CONTRACTS, ETH_TOKEN_ADDRESS
 from utils.starknet import (
     deploy_v2,
@@ -28,12 +29,16 @@ async def main():
     }
     dump_declarations(class_hash)
 
+    print("class_hash: ", class_hash)
+
     deployments = {}
     deployments["resolver_Resolver"] = await deploy_v2(
         "resolver_Resolver",
-        1, # size uri array
-        # uri array
+        # public key,
+        [184555836509371486644303486690696490826338471053535799928930015955655750516, 1797578980074678282596] # external uri
     )
+    # https://goerli.api.ccip-demo.st
+    # arknet.id
     dump_deployments(deployments)
 
 

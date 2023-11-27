@@ -130,11 +130,11 @@ def get_tx_url(tx_hash: int) -> str:
 
 
 def get_sierra_artifact(contract_name):
-    return BUILD_DIR / f"{contract_name}.sierra.json"
+    return BUILD_DIR / f"{contract_name}.contract_class.json"
 
 
 def get_casm_artifact(contract_name):
-    return BUILD_DIR / f"{contract_name}.casm.json"
+    return BUILD_DIR / f"{contract_name}.compiled_contract_class.json"
 
 
 def get_abi(contract_name):
@@ -150,13 +150,13 @@ async def declare_v2(contract_name):
 
     # contract_compiled_casm is a string containing the content of the starknet-sierra-compile (.casm file)
     casm_artifact = get_casm_artifact(contract_name)
-    contract_compiled_casm = Path(casm_artifact).read_text()
+    contract_compiled_casm = Path(casm_artifact).read_text("utf-8")
     casm_class = create_casm_class(contract_compiled_casm)
     casm_class_hash = compute_casm_class_hash(casm_class)
 
     # get sierra artifact
     sierra_artifact = get_sierra_artifact(contract_name)
-    contract_compiled_sierra = Path(sierra_artifact).read_text()
+    contract_compiled_sierra = Path(sierra_artifact).read_text("utf-8")
     sierra_class = create_sierra_compiled_contract(contract_compiled_sierra)
     sierra_class_hash = compute_sierra_class_hash(sierra_class)
     # Check has not been declared before
@@ -196,6 +196,7 @@ async def deploy_v2(contract_name, *args):
         abi=json.loads(abi),
         constructor_args=list(args),
         max_fee=int(1e17),
+        cairo_version = 1
     )
     await deploy_result.wait_for_acceptance()
     logger.info(
