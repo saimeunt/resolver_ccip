@@ -1,7 +1,9 @@
 #[starknet::contract]
 mod Resolver {
+    use core::option::OptionTrait;
+    use core::traits::TryInto;
     use core::array::SpanTrait;
-    use starknet::ContractAddress;
+    use starknet::{ContractAddress, get_block_timestamp};
     use ecdsa::check_ecdsa_signature;
     use resolver::interface::resolver::{IResolver, IResolverDispatcher, IResolverDispatcherTrait};
 
@@ -22,14 +24,24 @@ mod Resolver {
         fn resolve(
             self: @ContractState, domain: Span<felt252>, field: felt252, hint: Span<felt252>
         ) -> felt252 {
-            if hint.len() < 3 {
+            if hint.len() != 4 {
                 panic(self.get_uri(array!['offchain_resolving']));
             }
 
+            let max_validity = *hint.at(3);
+            assert(get_block_timestamp() < max_validity.try_into().unwrap(), 'Signature expired');
+
             let hashed_domain = self.hash_domain(domain);
             let message_hash: felt252 = hash::LegacyHash::hash(
-                hash::LegacyHash::hash(hashed_domain, field), *hint.at(0)
+                hash::LegacyHash::hash(
+                    hash::LegacyHash::hash(
+                        hash::LegacyHash::hash('ccip_demo resolving', max_validity), hashed_domain
+                    ),
+                    field
+                ),
+                *hint.at(0)
             );
+
             let public_key = self.public_key.read();
             let is_valid = check_ecdsa_signature(
                 message_hash, public_key, *hint.at(1), *hint.at(2)

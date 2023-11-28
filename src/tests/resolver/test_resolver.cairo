@@ -7,7 +7,7 @@ use starknet::ContractAddress;
 use starknet::testing;
 use starknet::contract_address::ContractAddressZeroable;
 use starknet::contract_address_const;
-use starknet::testing::set_contract_address;
+use starknet::testing::{set_contract_address, set_block_timestamp};
 use super::super::utils;
 
 use openzeppelin::token::erc20::{
@@ -108,6 +108,10 @@ fn test_offchain_resolving_with_hint() {
     let notion: felt252 = 1059716045;
     let iris: felt252 = 999902;
 
+    let max_validity: felt252 = 1701167467;
+    let timestamp: u64 = 1701167467 - 1800; // max_validity - 30 minutes
+    set_block_timestamp(timestamp);
+
     //we mint an identity
     identity.mint(id1);
 
@@ -128,8 +132,9 @@ fn test_offchain_resolving_with_hint() {
             'starknet',
             array![
                 0x04a8173e2F008282aC9793FB929974Cc7CEd6cEb76c79A0A9e0D163e60d08b6f,
-                2089118561466072516921896590836512635522628730170556232409568333563898398738,
-                2604946082720653006262636424654687283228219984561005042815724129995170496140
+                245371453901460459147748049728129673559137408586661778136962765820508164010,
+                3537788104880290368328032579969034182821490439553457951875836525032598257669,
+                max_validity,
             ]
                 .span()
         );
@@ -141,8 +146,8 @@ fn test_offchain_resolving_with_hint() {
 
 #[test]
 #[available_gas(20000000000)]
-#[should_panic(expected: ('Invalid signature', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED'))]
-fn test_offchain_resolving_with_hint_invalid_sig() {
+#[should_panic(expected: ('Signature expired', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED'))]
+fn test_offchain_resolving_with_hint_expired_sig() {
     // setup
     let (eth, pricing, identity, naming, resolver) = deploy();
     let caller = contract_address_const::<0x123>();
@@ -150,6 +155,10 @@ fn test_offchain_resolving_with_hint_invalid_sig() {
     let id1: u128 = 1;
     let notion: felt252 = 1059716045;
     let iris: felt252 = 999902;
+
+    let max_validity: felt252 = 1701167467;
+    let timestamp: u64 = 1701167467 + 1800; // max_validity + 30 minutes
+    set_block_timestamp(timestamp);
 
     //we mint an identity
     identity.mint(id1);
@@ -169,7 +178,52 @@ fn test_offchain_resolving_with_hint_invalid_sig() {
         .resolve(
             array![999902, 1059716045].span(),
             'starknet',
-            array![0x04a8173e2F008282aC9793FB929974Cc7CEd6cEb76c79A0A9e0D163e60d08b6f, 1, 2].span()
+            array![0x04a8173e2F008282aC9793FB929974Cc7CEd6cEb76c79A0A9e0D163e60d08b6f, 1, 2, max_validity]
+                .span()
+        );
+}
+
+#[test]
+#[available_gas(20000000000)]
+#[should_panic(expected: ('Invalid signature', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED'))]
+fn test_offchain_resolving_with_hint_invalid_sig() {
+    // setup
+    let (eth, pricing, identity, naming, resolver) = deploy();
+    let caller = contract_address_const::<0x123>();
+    set_contract_address(caller);
+    let id1: u128 = 1;
+    let notion: felt252 = 1059716045;
+    let iris: felt252 = 999902;
+
+    let max_validity: felt252 = 1701167467;
+    let timestamp: u64 = 1701167467 - 1800; // max_validity - 30 minutes
+    set_block_timestamp(timestamp);
+
+    //we mint an identity
+    identity.mint(id1);
+
+    // we check how much a domain costs
+    let (_, price) = pricing.compute_buy_price(6, 365);
+
+    // we allow the naming to take our money
+    eth.approve(naming.contract_address, price);
+
+    // we buy with a resolver, no sponsor, no discount and empty metadata
+    naming.buy(id1, notion, 365, resolver.contract_address, ContractAddressZeroable::zero(), 0, 0);
+
+    // we call resolve on the naming contract for subdomain iris.notion.stark
+    // It should panic as signature is invalid
+    let result = naming
+        .resolve(
+            array![999902, 1059716045].span(),
+            'starknet',
+            array![
+                0x04a8173e2F008282aC9793FB929974Cc7CEd6cEb76c79A0A9e0D163e60d08b6f,
+                1,
+                2,
+                max_validity
+            ]
+                .span()
         );
 }
 
