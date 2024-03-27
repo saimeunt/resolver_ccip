@@ -34,8 +34,8 @@ async def main():
     deployments = {}
     deployments["resolver_Resolver"] = await deploy_v2(
         "resolver_Resolver",
-        # public key,
-        [184555836509371486644303486690696490826338471053535799928930015955655750516, 1797578980074678282596] # external uri
+        0x44f3346a082fe41ed51255efc0de47ad171b95e856f07170dd7c44c174ec1fa,
+        [184555836509371486644303486690696490826338471053535799928930015955655750516, 1797578980074678282596]
     )
     # https://goerli.api.ccip-demo.st
     # arknet.id

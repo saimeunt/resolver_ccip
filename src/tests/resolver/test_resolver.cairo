@@ -10,9 +10,10 @@ use starknet::contract_address_const;
 use starknet::testing::{set_contract_address, set_block_timestamp};
 use super::super::utils;
 
-use openzeppelin::token::erc20::{
-    erc20::ERC20, interface::{IERC20Camel, IERC20CamelDispatcher, IERC20CamelDispatcherTrait}
+use openzeppelin::token::erc20::{   
+    interface::{IERC20Camel, IERC20CamelDispatcher, IERC20CamelDispatcherTrait}
 };
+use super::erc20::ERC20;
 use identity::{
     identity::main::Identity, interface::identity::{IIdentityDispatcher, IIdentityDispatcherTrait}
 };
@@ -30,18 +31,17 @@ fn deploy() -> (
     INamingDispatcher,
     IResolverDispatcher
 ) {
+    let admin = 0x123;
     //erc20
-    // 0, 1 = low and high of ETH supply
-    let eth = utils::deploy(ERC20::TEST_CLASS_HASH, array!['ether', 'ETH', 0, 1, 0x123]);
+    let eth = utils::deploy(ERC20::TEST_CLASS_HASH, array![]);
 
     // pricing
     let pricing = utils::deploy(Pricing::TEST_CLASS_HASH, array![eth.into()]);
 
     // identity
-    let identity = utils::deploy(Identity::TEST_CLASS_HASH, array![0]);
+    let identity = utils::deploy(Identity::TEST_CLASS_HASH, array![admin, 0]);
 
     // naming
-    let admin = 0x123;
     let address = utils::deploy(
         Naming::TEST_CLASS_HASH, array![identity.into(), pricing.into(), 0, admin]
     );
