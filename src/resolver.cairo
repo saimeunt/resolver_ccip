@@ -6,12 +6,28 @@ mod Resolver {
     use starknet::{ContractAddress, get_block_timestamp};
     use ecdsa::check_ecdsa_signature;
     use resolver::interface::resolver::{IResolver, IResolverDispatcher, IResolverDispatcherTrait};
+    use storage_read::{main::storage_read_component, interface::IStorageRead};
+
+    component!(path: storage_read_component, storage: storage_read, event: StorageReadEvent);
+
+    #[abi(embed_v0)]
+    impl StorageReadImpl = storage_read_component::StorageRead<ContractState>;
 
     #[storage]
     struct Storage {
         public_key: felt252,
         uri: LegacyMap<felt252, felt252>,
+        #[substorage(v0)]
+        storage_read: storage_read_component::Storage,
     }
+
+    #[event]
+    #[derive(Drop, starknet::Event)]
+    enum Event {
+        #[flat]
+        StorageReadEvent: storage_read_component::Event,
+    }
+
 
     #[constructor]
     fn constructor(ref self: ContractState, _public_key: felt252, uri: Span<felt252>) {
