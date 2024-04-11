@@ -1,6 +1,5 @@
 #[starknet::contract]
 mod Resolver {
-    use core::starknet::event::EventEmitter;
     use core::option::OptionTrait;
     use core::traits::TryInto;
     use core::array::SpanTrait;
