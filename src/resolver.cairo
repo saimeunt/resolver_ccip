@@ -51,7 +51,7 @@ mod Resolver {
         self.ownable.initializer(owner);
         self.public_key.write(_public_key);
         self.store_uri(uri);
-        self.emit(StarknetIDOffChainResolverUpdate { uri: uri, });
+        self.emit(StarknetIDOffChainResolverUpdate { uri });
     }
 
     #[external(v0)]
