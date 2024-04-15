@@ -10,7 +10,7 @@ use starknet::contract_address_const;
 use starknet::testing::{set_contract_address, set_block_timestamp};
 use super::super::utils;
 
-use openzeppelin::token::erc20::{   
+use openzeppelin::token::erc20::{
     interface::{IERC20Camel, IERC20CamelDispatcher, IERC20CamelDispatcherTrait}
 };
 use super::erc20::ERC20;
@@ -24,7 +24,9 @@ use naming::pricing::Pricing;
 use resolver::interface::resolver::{IResolver, IResolverDispatcher, IResolverDispatcherTrait};
 use resolver::resolver::Resolver;
 
-fn deploy() -> (
+fn deploy(
+    pub_key: felt252
+) -> (
     IERC20CamelDispatcher,
     IPricingDispatcher,
     IIdentityDispatcher,
@@ -47,12 +49,7 @@ fn deploy() -> (
     );
 
     let resolver = utils::deploy(
-        Resolver::TEST_CLASS_HASH,
-        array![
-            0x64018d8ea7829641419aff38ea79efd3eafedf3a5c1fe001d35339b889d48f4,
-            1,
-            'http://0.0.0.0:8090'
-        ]
+        Resolver::TEST_CLASS_HASH, array![admin, pub_key, 1, 'http://0.0.0.0:8090']
     );
     (
         IERC20CamelDispatcher { contract_address: eth },
@@ -72,7 +69,9 @@ fn deploy() -> (
 )]
 fn test_offchain_resolving_no_hint() {
     // setup
-    let (eth, pricing, identity, naming, resolver) = deploy();
+    let (eth, pricing, identity, naming, resolver) = deploy(
+        0x64018d8ea7829641419aff38ea79efd3eafedf3a5c1fe001d35339b889d48f4
+    );
     let caller = contract_address_const::<0x123>();
     set_contract_address(caller);
     let id1: u128 = 1;
@@ -101,7 +100,9 @@ fn test_offchain_resolving_no_hint() {
 #[available_gas(20000000000)]
 fn test_offchain_resolving_with_hint() {
     // setup
-    let (eth, pricing, identity, naming, resolver) = deploy();
+    let (eth, pricing, identity, naming, resolver) = deploy(
+        0x64018d8ea7829641419aff38ea79efd3eafedf3a5c1fe001d35339b889d48f4
+    );
     let caller = contract_address_const::<0x123>();
     set_contract_address(caller);
     let id1: u128 = 1;
@@ -149,7 +150,9 @@ fn test_offchain_resolving_with_hint() {
 #[should_panic(expected: ('Signature expired', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED'))]
 fn test_offchain_resolving_with_hint_expired_sig() {
     // setup
-    let (eth, pricing, identity, naming, resolver) = deploy();
+    let (eth, pricing, identity, naming, resolver) = deploy(
+        0x64018d8ea7829641419aff38ea79efd3eafedf3a5c1fe001d35339b889d48f4
+    );
     let caller = contract_address_const::<0x123>();
     set_contract_address(caller);
     let id1: u128 = 1;
@@ -178,7 +181,12 @@ fn test_offchain_resolving_with_hint_expired_sig() {
         .resolve(
             array![999902, 1059716045].span(),
             'starknet',
-            array![0x04a8173e2F008282aC9793FB929974Cc7CEd6cEb76c79A0A9e0D163e60d08b6f, 1, 2, max_validity]
+            array![
+                0x04a8173e2F008282aC9793FB929974Cc7CEd6cEb76c79A0A9e0D163e60d08b6f,
+                1,
+                2,
+                max_validity
+            ]
                 .span()
         );
 }
@@ -188,7 +196,9 @@ fn test_offchain_resolving_with_hint_expired_sig() {
 #[should_panic(expected: ('Invalid signature', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED'))]
 fn test_offchain_resolving_with_hint_invalid_sig() {
     // setup
-    let (eth, pricing, identity, naming, resolver) = deploy();
+    let (eth, pricing, identity, naming, resolver) = deploy(
+        0x64018d8ea7829641419aff38ea79efd3eafedf3a5c1fe001d35339b889d48f4
+    );
     let caller = contract_address_const::<0x123>();
     set_contract_address(caller);
     let id1: u128 = 1;

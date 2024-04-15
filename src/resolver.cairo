@@ -7,11 +7,16 @@ mod Resolver {
     use ecdsa::check_ecdsa_signature;
     use resolver::interface::resolver::{IResolver, IResolverDispatcher, IResolverDispatcherTrait};
     use storage_read::{main::storage_read_component, interface::IStorageRead};
+    use openzeppelin::access::ownable::OwnableComponent;
 
     component!(path: storage_read_component, storage: storage_read, event: StorageReadEvent);
+    component!(path: OwnableComponent, storage: ownable, event: OwnableEvent);
 
     #[abi(embed_v0)]
     impl StorageReadImpl = storage_read_component::StorageRead<ContractState>;
+    #[abi(embed_v0)]
+    impl OwnableImpl = OwnableComponent::OwnableImpl<ContractState>;
+    impl OwnableInternalImpl = OwnableComponent::InternalImpl<ContractState>;
 
     #[storage]
     struct Storage {
@@ -19,20 +24,34 @@ mod Resolver {
         uri: LegacyMap<felt252, felt252>,
         #[substorage(v0)]
         storage_read: storage_read_component::Storage,
+        #[substorage(v0)]
+        ownable: OwnableComponent::Storage,
     }
 
     #[event]
     #[derive(Drop, starknet::Event)]
     enum Event {
+        StarknetIDOffChainResolverUpdate: StarknetIDOffChainResolverUpdate,
         #[flat]
         StorageReadEvent: storage_read_component::Event,
+        #[flat]
+        OwnableEvent: OwnableComponent::Event,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    struct StarknetIDOffChainResolverUpdate {
+        uri: Span<felt252>,
     }
 
 
     #[constructor]
-    fn constructor(ref self: ContractState, _public_key: felt252, uri: Span<felt252>) {
+    fn constructor(
+        ref self: ContractState, owner: ContractAddress, _public_key: felt252, uri: Span<felt252>
+    ) {
+        self.ownable.initializer(owner);
         self.public_key.write(_public_key);
         self.store_uri(uri);
+        self.emit(StarknetIDOffChainResolverUpdate { uri });
     }
 
     #[external(v0)]
@@ -65,6 +84,12 @@ mod Resolver {
             assert(is_valid, 'Invalid signature');
 
             return *hint.at(0);
+        }
+
+        fn update_uri(ref self: ContractState, new_uri: Span<felt252>) {
+            self.ownable.assert_only_owner();
+            self.store_uri(new_uri);
+            self.emit(StarknetIDOffChainResolverUpdate { uri: new_uri, });
         }
     }
 
