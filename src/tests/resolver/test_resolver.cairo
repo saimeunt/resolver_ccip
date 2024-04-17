@@ -1,5 +1,6 @@
 use array::ArrayTrait;
 use debug::PrintTrait;
+use core::option::OptionTrait;
 use zeroable::Zeroable;
 use traits::Into;
 
@@ -48,9 +49,7 @@ fn deploy(
         Naming::TEST_CLASS_HASH, array![identity.into(), pricing.into(), 0, admin]
     );
 
-    let resolver = utils::deploy(
-        Resolver::TEST_CLASS_HASH, array![admin, pub_key, 1, 'http://0.0.0.0:8090']
-    );
+    let resolver = utils::deploy(Resolver::TEST_CLASS_HASH, array![admin, pub_key]);
     (
         IERC20CamelDispatcher { contract_address: eth },
         IPricingDispatcher { contract_address: pricing },
@@ -62,9 +61,57 @@ fn deploy(
 
 #[test]
 #[available_gas(20000000000)]
+fn test_uri() {
+    let (eth, pricing, identity, naming, resolver) = deploy(
+        0x64018d8ea7829641419aff38ea79efd3eafedf3a5c1fe001d35339b889d48f4
+    );
+
+    let caller = contract_address_const::<0x123>();
+    set_contract_address(caller);
+
+    // add a some uris
+    resolver.add_uri(array!['http://0.0.0.0:8090/resolve?dom', 'ain='].span());
+    resolver.add_uri(array!['http://sepolia.starknet.id/reso', 'lve?domain='].span());
+    resolver.add_uri(array!['http://sepolia_2.starknet.id/re', 'solve?domain='].span());
+
+    let mut uris = resolver.get_uris();
+    assert(uris.len() == 9, 'wrong length');
+    assert(uris.at(0) == @2, 'wrong nb of arg');
+    assert(uris.at(1) == @'http://0.0.0.0:8090/resolve?dom', 'wrong uri');
+    assert(uris.at(2) == @'ain=', 'wrong uri');
+    assert(uris.at(3) == @2, 'wrong nb of arg');
+    assert(uris.at(4) == @'http://sepolia.starknet.id/reso', 'wrong 2nd uri');
+    assert(uris.at(5) == @'lve?domain=', 'wrong 2nd uri');
+    assert(uris.at(6) == @2, 'wrong nb of arg');
+    assert(uris.at(7) == @'http://sepolia_2.starknet.id/re', 'wrong 2nd uri');
+    assert(uris.at(8) == @'solve?domain=', 'wrong 2nd uri');
+
+    // remove the uri at index 1
+    resolver.remove_uri(1);
+    let mut uris = resolver.get_uris();
+    assert(uris.len() == 6, 'wrong length');
+    assert(uris.at(0) == @2, 'wrong nb of arg');
+    assert(uris.at(1) == @'http://0.0.0.0:8090/resolve?dom', 'wrong uri');
+    assert(uris.at(2) == @'ain=', 'wrong uri');
+    assert(uris.at(3) == @2, 'wrong nb of arg');
+    assert(uris.at(4) == @'http://sepolia_2.starknet.id/re', 'wrong 2nd uri');
+    assert(uris.at(5) == @'solve?domain=', 'wrong 2nd uri');
+}
+
+#[test]
+#[available_gas(20000000000)]
 #[should_panic(
     expected: (
-        'offchain_resolving', 'http://0.0.0.0:8090', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED'
+        'offchain_resolving',
+        1,
+        999902,
+        1,
+        'http://0.0.0.0:8090',
+        2,
+        'http://0.0.0.0:8090/resolve?dom',
+        'ain=',
+        'ENTRYPOINT_FAILED',
+        'ENTRYPOINT_FAILED'
     )
 )]
 fn test_offchain_resolving_no_hint() {
@@ -77,6 +124,10 @@ fn test_offchain_resolving_no_hint() {
     let id1: u128 = 1;
     let iris: felt252 = 999902;
     let notion: felt252 = 1059716045;
+
+    // add uri
+    resolver.add_uri(array!['http://0.0.0.0:8090'].span());
+    resolver.add_uri(array!['http://0.0.0.0:8090/resolve?dom', 'ain='].span());
 
     //we mint an identity
     identity.mint(id1);
@@ -108,6 +159,10 @@ fn test_offchain_resolving_with_hint() {
     let id1: u128 = 1;
     let notion: felt252 = 1059716045;
     let iris: felt252 = 999902;
+
+    // add uri
+    resolver.add_uri(array!['http://0.0.0.0:8090'].span());
+    resolver.add_uri(array!['http://0.0.0.0:8090/resolve?dom', 'ain='].span());
 
     let max_validity: felt252 = 1701167467;
     let timestamp: u64 = 1701167467 - 1800; // max_validity - 30 minutes
