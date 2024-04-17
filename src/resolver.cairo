@@ -21,7 +21,7 @@ mod Resolver {
     #[storage]
     struct Storage {
         public_key: felt252,
-        uri: LegacyMap<felt252, felt252>,
+        uri: LegacyMap<(felt252, felt252), felt252>,
         #[substorage(v0)]
         storage_read: storage_read_component::Storage,
         #[substorage(v0)]
@@ -40,18 +40,15 @@ mod Resolver {
 
     #[derive(Drop, starknet::Event)]
     struct StarknetIDOffChainResolverUpdate {
-        uri: Span<felt252>,
+        uri_added: Span<felt252>,
+        uri_removed: Span<felt252>,
     }
 
 
     #[constructor]
-    fn constructor(
-        ref self: ContractState, owner: ContractAddress, _public_key: felt252, uri: Span<felt252>
-    ) {
+    fn constructor(ref self: ContractState, owner: ContractAddress, _public_key: felt252) {
         self.ownable.initializer(owner);
         self.public_key.write(_public_key);
-        self.store_uri(uri);
-        self.emit(StarknetIDOffChainResolverUpdate { uri });
     }
 
     #[external(v0)]
@@ -60,7 +57,7 @@ mod Resolver {
             self: @ContractState, domain: Span<felt252>, field: felt252, hint: Span<felt252>
         ) -> felt252 {
             if hint.len() != 4 {
-                panic(self.get_uri(array!['offchain_resolving']));
+                panic(self.get_error_array(array!['offchain_resolving'], domain));
             }
 
             let max_validity = *hint.at(3);
@@ -86,37 +83,118 @@ mod Resolver {
             return *hint.at(0);
         }
 
-        fn update_uri(ref self: ContractState, new_uri: Span<felt252>) {
+        fn get_uris(self: @ContractState) -> Array<felt252> {
+            let mut res: Array<felt252> = array![];
+            let mut i: felt252 = 0;
+            loop {
+                if self.uri.read((i, 0)) == 0 {
+                    break;
+                }
+                if self.uri.read((i, 0)) != 'this call was removed' {
+                    // we get the next uri at index i
+                    let mut new_uri = self.get_uri_at_index(i);
+                    res.append(new_uri.len().into());
+                    loop {
+                        match new_uri.pop_front() {
+                            Option::Some(value) => { res.append(value); },
+                            Option::None => { break; }
+                        }
+                    };
+                }
+                i += 1;
+            };
+            res
+        }
+
+        fn add_uri(ref self: ContractState, new_uri: Span<felt252>) {
             self.ownable.assert_only_owner();
-            self.store_uri(new_uri);
-            self.emit(StarknetIDOffChainResolverUpdate { uri: new_uri, });
+            let mut i: felt252 = 0;
+            loop {
+                if self.uri.read((i, 0)) == 0 {
+                    self
+                        .emit(
+                            StarknetIDOffChainResolverUpdate {
+                                uri_added: new_uri, uri_removed: array![].span()
+                            }
+                        );
+                    self.store_uri(new_uri, i);
+
+                    break;
+                }
+                i += 1;
+            };
+        }
+
+        fn remove_uri(ref self: ContractState, index: felt252) {
+            self.ownable.assert_only_owner();
+            let uri_removed = self.get_uri_at_index(index).span();
+            self.emit(StarknetIDOffChainResolverUpdate { uri_added: array![].span(), uri_removed });
+            self.uri.write((index, 0), 'this call was removed');
         }
     }
 
     #[generate_trait]
     impl InternalImpl of InternalTrait {
-        fn store_uri(ref self: ContractState, mut uri: Span<felt252>) {
-            let mut index = 0;
+        fn get_uri_at_index(self: @ContractState, index: felt252) -> Array<felt252> {
+            let mut res = array![];
+            let mut j: felt252 = 0;
+            loop {
+                let value = self.uri.read((index, j));
+                if value == 0 {
+                    break;
+                }
+                res.append(value);
+                j += 1;
+            };
+            res
+        }
+
+        fn store_uri(ref self: ContractState, mut uri: Span<felt252>, index: felt252) {
+            let mut j = 0;
             loop {
                 match uri.pop_front() {
                     Option::Some(value) => {
-                        self.uri.write(index, *value);
-                        index += 1;
+                        self.uri.write((index, j), *value);
+                        j += 1;
                     },
                     Option::None => { break; }
                 }
             };
         }
 
-        fn get_uri(self: @ContractState, mut res: Array<felt252>) -> Array<felt252> {
-            let mut index = 0;
+        fn get_error_array(
+            self: @ContractState, mut res: Array<felt252>, mut domain: Span<felt252>
+        ) -> Array<felt252> {
+            // append domain to error array
+            res.append(domain.len().into());
             loop {
-                let value = self.uri.read(index);
-                if value == 0 {
+                match domain.pop_front() {
+                    Option::Some(value) => { res.append(*value); },
+                    Option::None => { break; }
+                }
+            };
+            // append uris to error array
+            self.append_uris(res)
+        }
+
+        fn append_uris(self: @ContractState, mut res: Array<felt252>) -> Array<felt252> {
+            let mut i: felt252 = 0;
+            loop {
+                if self.uri.read((i, 0)) == 0 {
                     break;
                 }
-                res.append(value);
-                index += 1;
+                if self.uri.read((i, 0)) != 'this call was removed' {
+                    // we get the next uri at index i
+                    let mut new_uri = self.get_uri_at_index(i);
+                    res.append(new_uri.len().into());
+                    loop {
+                        match new_uri.pop_front() {
+                            Option::Some(value) => { res.append(value); },
+                            Option::None => { break; }
+                        }
+                    };
+                }
+                i += 1;
             };
             res
         }
