@@ -1,15 +1,8 @@
 # Resolver CCIP
 
-## Overview
+## Description
 
 Resolver CCIP is a smart contract implementation in Cairo for Starknet that enables CCIP-Read (Cross-Chain Interoperability Protocol Read) functionality. This resolver allows for efficient off-chain data resolution while maintaining the security guarantees of the blockchain.
-
-## Prerequisites
-
-- [Cairo](https://www.cairo-lang.org/docs/quickstart.html) - Smart contract programming language
-- [Scarb](https://docs.swmansion.com/scarb/) - Package manager for Cairo
-- Python 3.9 or higher
-- [Starknet-devnet](https://github.com/0xSpaceShard/starknet-devnet) (for local testing)
 
 ## Installation
 
@@ -29,18 +22,6 @@ pip install -r requirements.txt
 scarb build
 ```
 
-## Project Structure
-
-```
-resolver_ccip/
-├── src/                # Cairo smart contracts
-│   └── lib.cairo       # Main contract implementation
-├── scripts/            # Deployment and utility scripts
-├── .env.example        # Environment variables template
-├── Scarb.toml         # Cairo project configuration
-└── requirements.txt    # Python dependencies
-```
-
 ## Usage
 
 1. Configure your environment:
@@ -50,14 +31,11 @@ cp .env.example .env
 ```
 
 2. Deploy the resolver:
+To deploy the contracts:
 ```bash
 python scripts/deploy.py
 ```
 
-3. Update resolver configuration:
-```bash
-python scripts/update_resolver.py
-```
 
 ## Testing
 
@@ -66,11 +44,10 @@ Run Cairo tests:
 scarb test
 ```
 
-## Development
-
-The project uses:
-- Cairo for smart contracts (61.8% of codebase)
-- Python for scripts and testing (38.2% of codebase)
+For Python tests:
+```bash
+pytest
+```
 
 ## Contributing
 
@@ -86,16 +63,3 @@ git checkout -b feature/your-feature-name
 ## License
 
 This project is licensed under the MIT License.
-
-## Security
-
-For security concerns, please open an issue or contact the maintainers directly.
-
-## Maintainers
-
-- @irisdv
-- @Th0rgal
-- @Marchand-Nicolas
-- @fricoben
-
-For more information or support, please open an issue on the GitHub repository.
